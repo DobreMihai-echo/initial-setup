@@ -1,14 +1,6 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: eureka-cm
-data:
-  EUREKA_SERVER_ADDRESS: "http://eureka-0.eureka:8761/eureka"
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
   name: config-cm
 data:
   CONFIG_SERVER_URL: "http://config-server-svc"
@@ -20,4 +12,29 @@ metadata:
   name: postgresql-cm
 data:
   hostname: "postgresql-0.postgresql"
-  
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secrets
+type: Opaque
+stringData:
+  postgresUser: postgresql
+  postgresPassword: password
+  postgresDatabase: userdb 
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+data:
+  init.sql: |
+    CREATE TABLE role (
+        id serial PRIMARY KEY,
+        name VARCHAR(100) NOT NULL
+    );
+    
+    INSERT INTO role (name) VALUES ('ROLE_ADMIN');
+    INSERT INTO role (name) VALUES ('ROLE_USER');  

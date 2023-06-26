@@ -1,77 +1,80 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: postgresql-pvc
+  name: postgres-pvc
 spec:
+  accessModes:
+    - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-  storageClassName: standard
-  accessModes:
-    - ReadWriteOnce
-
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: postgresql
-spec:
-  selector:
-    matchLabels:
-      app: postgresql
-  serviceName: postgresql
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: postgresql
-    spec:
-      containers:
-      - name: postgresql
-        image: postgres:10.1
-        ports:
-        - containerPort: 5432
-          name: postgresql
-        env:
-        - name: POSTGRESQL_ROOT_PASSWORD
-          value: Ghostblade123!
-        volumeMounts:
-        - name: postgresql-initdb 
-          mountPath: /docker-entrypoint-initdb.d
-        - name: postgresql-persistent-storage
-          mountPath: /var/lib/postgresql/data
-      volumes:
-        - name:  postgresql-persistent-storage
-          persistentVolumeClaim:
-            claimName: postgresql-pvc
-        - name: postgresql-initdb   
-          configMap:
-            name: postgresql-initdb-cm 
-
 
 ---
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
-  name: postgresql-initdb-cm
-data:
-  init.sql: |
-    CREATE DATABASE IF NOT EXISTS userdb;
-    CREATE DATABASE IF NOT EXISTS eventsdb;
-    CREATE DATABASE IF NOT EXISTS notificationdb;
+  name: postgres-secret
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: "Your_Password_Here"
 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:13
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: postgresUser
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: postgresPassword
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secrets
+                  key: postgresDatabase
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-storage
+            - mountPath: /docker-entrypoint-initdb.d/
+              name: init-scripts
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+        - name: init-scripts
+          configMap:
+            name: postgres-init-script
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgresql
+  name: postgres
 spec:
-  clusterIP: None
   selector:
-    app: postgresql
+    app: postgres
   ports:
-  - port: 5432
-          
-    
-
+    - protocol: TCP
+      port: 5432
