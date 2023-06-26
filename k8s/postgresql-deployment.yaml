@@ -8,7 +8,6 @@ spec:
   resources:
     requests:
       storage: 1Gi
-
 ---
 apiVersion: v1
 kind: Secret
@@ -16,7 +15,9 @@ metadata:
   name: postgres-secret
 type: Opaque
 stringData:
-  POSTGRES_PASSWORD: "Your_Password_Here"
+  POSTGRES_USER: "postgresql"
+  POSTGRES_PASSWORD: "password"
+  POSTGRES_DB: "userdb"
 
 ---
 apiVersion: apps/v1
@@ -40,24 +41,24 @@ spec:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secrets
-                  key: postgresUser
+                  name: postgres-secret
+                  key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secrets
-                  key: postgresPassword
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secrets
-                  key: postgresDatabase
-            - name: PGDATA # This sets the PostgreSQL data directory to the subdirectory
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           ports:
             - containerPort: 5432
           volumeMounts:
-            - mountPath: /var/lib/postgresql/data # This remains the same
+            - mountPath: /var/lib/postgresql/data
               name: postgres-storage
             - mountPath: /docker-entrypoint-initdb.d/
               name: init-scripts
@@ -68,6 +69,8 @@ spec:
         - name: init-scripts
           configMap:
             name: postgres-init-script
+
+
 ---
 apiVersion: v1
 kind: Service
