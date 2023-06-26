@@ -52,10 +52,12 @@ spec:
                 secretKeyRef:
                   name: postgres-secrets
                   key: postgresDatabase
+            - name: PGDATA # This sets the PostgreSQL data directory to the subdirectory
+              value: /var/lib/postgresql/data/pgdata
           ports:
             - containerPort: 5432
           volumeMounts:
-            - mountPath: /var/lib/postgresql/data
+            - mountPath: /var/lib/postgresql/data # This remains the same
               name: postgres-storage
             - mountPath: /docker-entrypoint-initdb.d/
               name: init-scripts
@@ -66,7 +68,6 @@ spec:
         - name: init-scripts
           configMap:
             name: postgres-init-script
-
 ---
 apiVersion: v1
 kind: Service
